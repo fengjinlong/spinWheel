@@ -542,25 +542,19 @@ export default function App() {
             <div className="absolute -top-24 -left-24 w-72 h-72 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-rose-500/5 rounded-full blur-3xl pointer-events-none" />
 
-            {/* 当前模式状态指示条 */}
-            <div className="w-full flex items-center justify-between mb-6 px-2 text-xs">
-              <div className="flex items-center gap-2 text-slate-400">
-                <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            {/* 当前模式状态指示条 (固定高度，彻底杜绝换行抖动) */}
+            <div className="w-full flex items-center justify-between mb-6 px-2 text-xs min-h-[28px]">
+              <div className="flex items-center gap-2 text-slate-400 truncate">
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
                 <span>当前配置：</span>
                 <span className="font-semibold text-slate-200">
                   {customerType && prizeTier ? `${customerType} · ${prizeTier}` : '请先选择上方配置'}
                 </span>
-                {drawHistory.length > 0 && (
-                  <span className="ml-1 text-[11px] text-amber-400/90 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 font-mono">
-                    已抽 {drawHistory.length} 次
-                  </span>
-                )}
               </div>
-              {lastDrawnNumber !== null && !isSpinning && (
-                <div className="flex items-center gap-1.5 text-amber-400 font-bold bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/30 animate-fade-in">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>恭喜抽中：{PRIZE_NAMES[lastDrawnNumber]}</span>
-                </div>
+              {drawHistory.length > 0 && (
+                <span className="text-[11px] text-amber-400/90 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 font-mono shrink-0">
+                  已累计 {drawHistory.length} 次
+                </span>
               )}
             </div>
 
@@ -569,14 +563,9 @@ export default function App() {
               
               {/* 外部固定指针 (12 点钟方向，朝下对准选中的扇区) */}
               <div
-                className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 z-30 transition-transform duration-300 origin-top pointer-events-none ${
-                  isNeedleWobbling ? 'animate-bounce' : ''
+                className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 z-30 transition-transform duration-200 origin-top pointer-events-none ${
+                  isNeedleWobbling ? 'scale-110' : 'scale-100'
                 }`}
-                style={{
-                  transform: isNeedleWobbling
-                    ? 'translateX(-50%) rotate(0deg) scale(1.1)'
-                    : 'translateX(-50%)'
-                }}
               >
                 <div className="flex flex-col items-center">
                   {/* 指针主体带发光质感 */}
@@ -740,7 +729,7 @@ export default function App() {
             </div>
 
             {/* 提示信息：未选择时提示 */}
-            {!canSpin && !isSpinning && (
+            {(!customerType || !prizeTier) && (
               <div className="text-xs text-amber-400/90 flex items-center gap-1.5 mt-2 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/20">
                 <Info className="w-3.5 h-3.5" />
                 <span>请先在上方选择「场景」和「奖级」，方可启动抽奖</span>
