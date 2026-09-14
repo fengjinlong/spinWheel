@@ -18,7 +18,8 @@ import {
   Home,
   Mountain,
   Flower2,
-  Gem
+  Gem,
+  HelpCircle
 } from 'lucide-react';
 
 // ==========================================
@@ -204,6 +205,7 @@ export default function App() {
   const [currentRotation, setCurrentRotation] = useState(0);
   const [drawHistory, setDrawHistory] = useState<DrawRecord[]>([]);
   const [showResultModal, setShowResultModal] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   // 辅助视觉状态
   const [lastDrawnNumber, setLastDrawnNumber] = useState<number | null>(null);
@@ -211,7 +213,7 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showProbabilityPreview, setShowProbabilityPreview] = useState(false);
 
-  const historyEndRef = useRef<HTMLDivElement>(null);
+  const historyContainerRef = useRef<HTMLDivElement>(null);
   const spinTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const tickIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -223,10 +225,10 @@ export default function App() {
     };
   }, []);
 
-  // 记录追加时自动滚动到底部
+  // 仅在桌面端历史记录容器内部滚动到底部，绝对不滚动外层页面，确保页面停留在转盘页面
   useEffect(() => {
-    if (drawHistory.length > 0) {
-      historyEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (historyContainerRef.current) {
+      historyContainerRef.current.scrollTop = historyContainerRef.current.scrollHeight;
     }
   }, [drawHistory]);
 
@@ -330,12 +332,28 @@ export default function App() {
     setShowResultModal(true);
   };
 
-  // 5. 弹窗关闭 (关闭弹窗，同时清空记录，转盘归位)
-  const handleModalCloseClick = () => {
+  // 5. 点击关闭弹窗：若有抽奖记录，先询问是否重置抽奖结果；否则直接关闭
+  const handleRequestCloseModal = () => {
+    if (drawHistory.length === 0) {
+      setShowResultModal(false);
+      return;
+    }
+    setShowResetConfirm(true);
+  };
+
+  // 选择「是」：重置抽奖结果并关闭
+  const handleConfirmResetYes = () => {
+    setShowResetConfirm(false);
     setShowResultModal(false);
     setDrawHistory([]);
     setCurrentRotation(0);
     setLastDrawnNumber(null);
+  };
+
+  // 选择「否」：保留抽奖结果并关闭，用户继续抽奖，累计统计
+  const handleConfirmResetNo = () => {
+    setShowResetConfirm(false);
+    setShowResultModal(false);
   };
 
   // 统计结果数据处理：按数字从小到大排序展示
@@ -518,7 +536,7 @@ export default function App() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* 三、转盘区与操作按钮区 */}
-          <div className="lg:col-span-7 flex flex-col items-center bg-slate-950/40 border border-slate-800/80 rounded-3xl p-6 sm:p-8 relative overflow-hidden">
+          <div className="w-full lg:col-span-7 flex flex-col items-center bg-slate-950/40 border border-slate-800/80 rounded-3xl p-6 sm:p-8 relative overflow-hidden">
             
             {/* 背景氛围晕染 */}
             <div className="absolute -top-24 -left-24 w-72 h-72 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -532,6 +550,11 @@ export default function App() {
                 <span className="font-semibold text-slate-200">
                   {customerType && prizeTier ? `${customerType} · ${prizeTier}` : '请先选择上方配置'}
                 </span>
+                {drawHistory.length > 0 && (
+                  <span className="ml-1 text-[11px] text-amber-400/90 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 font-mono">
+                    已抽 {drawHistory.length} 次
+                  </span>
+                )}
               </div>
               {lastDrawnNumber !== null && !isSpinning && (
                 <div className="flex items-center gap-1.5 text-amber-400 font-bold bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/30 animate-fade-in">
@@ -774,8 +797,8 @@ export default function App() {
 
           </div>
 
-          {/* 五、本轮抽奖记录区 */}
-          <div className="lg:col-span-5 flex flex-col bg-slate-950/60 border border-slate-800/90 rounded-3xl p-5 sm:p-6 shadow-sm min-h-[480px] lg:h-[620px]">
+          {/* 五、本轮抽奖记录区 (移动端隐藏，桌面端展示) */}
+          <div className="hidden lg:flex lg:col-span-5 flex-col bg-slate-950/60 border border-slate-800/90 rounded-3xl p-5 sm:p-6 shadow-sm min-h-[480px] lg:h-[620px]">
             
             <div className="flex items-center justify-between pb-4 border-b border-slate-800">
               <div className="flex items-center space-x-2">
@@ -790,7 +813,7 @@ export default function App() {
             </div>
 
             {/* 记录列表 (随着抽奖次数向下追加，展示奖品文案) */}
-            <div className="flex-1 overflow-y-auto py-3 space-y-2 pr-1 custom-scrollbar">
+            <div ref={historyContainerRef} className="flex-1 overflow-y-auto py-3 space-y-2 pr-1 custom-scrollbar">
               {drawHistory.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center p-8 text-slate-500">
                   <div className="w-12 h-12 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-center mb-3 text-slate-600">
@@ -836,19 +859,13 @@ export default function App() {
                   </div>
                 ))
               )}
-              <div ref={historyEndRef} />
             </div>
 
-            {/* 底部摘要小贴士 */}
+            {/* 底部摘要小贴士 (已移除查看统计详情按钮) */}
             {drawHistory.length > 0 && (
               <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-                <span>最新：第 {drawHistory.length} 次抽中 {drawHistory[drawHistory.length - 1].prizeName}</span>
-                <button
-                  onClick={handleEndDrawClick}
-                  className="text-amber-400 hover:text-amber-300 font-medium underline underline-offset-2 cursor-pointer"
-                >
-                  查看统计详情
-                </button>
+                <span>最新记录：第 {drawHistory.length} 次抽中 {drawHistory[drawHistory.length - 1].prizeName}</span>
+                <span className="font-mono text-[11px] text-slate-500">已累计 {drawHistory.length} 次</span>
               </div>
             )}
 
@@ -886,7 +903,7 @@ export default function App() {
               </div>
               <button
                 id="btn-modal-close-icon"
-                onClick={handleModalCloseClick}
+                onClick={handleRequestCloseModal}
                 className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -961,13 +978,63 @@ export default function App() {
             <div className="pt-4 border-t border-slate-800 flex justify-end">
               <button
                 id="btn-modal-close"
-                onClick={handleModalCloseClick}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm transition-all shadow-md active:scale-98 cursor-pointer"
+                onClick={handleRequestCloseModal}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-sm transition-all shadow-md active:scale-98 cursor-pointer"
               >
-                关闭并重置
+                关闭
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* 七、是否重置抽奖结果确认对话框 */}
+      {showResetConfirm && (
+        <div
+          id="reset-confirm-backdrop"
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-fade-in"
+        >
+          <div
+            id="reset-confirm-dialog"
+            className="w-full max-w-sm bg-slate-900 border border-slate-700/90 rounded-2xl shadow-2xl p-6 relative"
+          >
+            <div className="flex items-start gap-3.5 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
+                <HelpCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-base font-bold text-white">是否重置抽奖结果？</h4>
+                <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
+                  • 选<span className="text-rose-400 font-bold mx-0.5">「是」</span>：清空本轮所有抽奖记录，转盘归位。<br />
+                  • 选<span className="text-emerald-400 font-bold mx-0.5">「否」</span>：保留当前抽奖结果，后续继续抽奖将累计统计。
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                id="btn-confirm-cancel"
+                onClick={() => setShowResetConfirm(false)}
+                className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-xs transition-colors cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                id="btn-confirm-reset-yes"
+                onClick={handleConfirmResetYes}
+                className="px-4 py-2 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white font-semibold text-xs transition-colors shadow-sm cursor-pointer"
+              >
+                是，重置
+              </button>
+              <button
+                id="btn-confirm-reset-no"
+                onClick={handleConfirmResetNo}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold text-xs transition-all shadow-sm cursor-pointer"
+              >
+                否，保留结果
+              </button>
+            </div>
           </div>
         </div>
       )}
