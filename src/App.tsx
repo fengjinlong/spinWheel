@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Trophy,
-  Users,
-  Award,
   RotateCcw,
   Play,
   CheckCircle2,
@@ -13,42 +11,70 @@ import {
   X,
   History,
   Info,
-  Clock
+  Clock,
+  MapPin,
+  Building2,
+  Trees,
+  Home,
+  Mountain,
+  Flower2,
+  Gem
 } from 'lucide-react';
 
 // ==========================================
-// 核心数据：概率表 (Strictly following spec)
+// 奖品名称映射 (1~10 严格替换)
+// 菊花替换1、金银花替换2、灵芝替换3、人参替换4、煤块替换5、
+// 铜块替换6、金子替换7、未知药剂替换8、机密情况替换9、芯片替换10
+// ==========================================
+export const PRIZE_NAMES: Record<number, string> = {
+  1: '菊花',
+  2: '金银花',
+  3: '灵芝',
+  4: '人参',
+  5: '煤块',
+  6: '铜块',
+  7: '金子',
+  8: '未知药剂',
+  9: '机密情况',
+  10: '芯片'
+};
+
+// ==========================================
+// 核心数据：概率表 (严格按照文档配置，数值保持原样)
+// 大房子替换一等奖、小房子替换二等奖、山洞替换三等奖、草坪替换四等奖
+// 荒村替换普通客户、遗迹替换VIP、城市替换自己人
 // ==========================================
 export const PROBABILITY_TABLE = {
-  '一等奖': {
-    '普通客户': [13, 3, 4, 6, 7, 11, 17, 23, 8, 8],
-    'VIP':     [11, 2, 4, 5, 6, 10, 15, 23, 12, 12],
-    '自己人':   [9, 1, 3, 4, 6, 9, 15, 23, 15, 15]
+  '大房子': {
+    '荒村': [13, 3, 4, 6, 7, 11, 17, 23, 8, 8],
+    '遗迹': [11, 2, 4, 5, 6, 10, 15, 23, 12, 12],
+    '城市': [9, 1, 3, 4, 6, 9, 15, 23, 15, 15]
   },
-  '二等奖': {
-    '普通客户': [3, 11, 16, 18, 18, 15, 11, 6, 1, 1],
-    'VIP':     [3, 11, 15, 17, 17, 15, 11, 6, 3, 2],
-    '自己人':   [3, 11, 14, 16, 16, 14, 11, 6, 5, 4]
+  '小房子': {
+    '荒村': [3, 11, 16, 18, 18, 15, 11, 6, 1, 1],
+    '遗迹': [3, 11, 15, 17, 17, 15, 11, 6, 3, 2],
+    '城市': [3, 11, 14, 16, 16, 14, 11, 6, 5, 4]
   },
-  '三等奖': {
-    '普通客户': [19, 17, 16, 13, 11, 9, 7, 5, 2, 1],
-    'VIP':     [18, 16, 15, 13, 11, 9, 7, 5, 4, 2],
-    '自己人':   [17, 15, 14, 12, 11, 9, 7, 5, 6, 4]
+  '山洞': {
+    '荒村': [19, 17, 16, 13, 11, 9, 7, 5, 2, 1],
+    '遗迹': [18, 16, 15, 13, 11, 9, 7, 5, 4, 2],
+    '城市': [17, 15, 14, 12, 11, 9, 7, 5, 6, 4]
   },
-  '四等奖': {
-    '普通客户': [27, 22, 17, 13, 9, 6, 4, 2, 0, 0],
-    'VIP':     [26, 21, 17, 13, 9, 6, 4, 2, 1, 1],
-    '自己人':   [25, 20, 17, 13, 9, 6, 4, 2, 2, 2]
+  '草坪': {
+    '荒村': [27, 22, 17, 13, 9, 6, 4, 2, 0, 0],
+    '遗迹': [26, 21, 17, 13, 9, 6, 4, 2, 1, 1],
+    '城市': [25, 20, 17, 13, 9, 6, 4, 2, 2, 2]
   }
 } as const;
 
-export type CustomerType = '普通客户' | 'VIP' | '自己人';
-export type PrizeTier = '一等奖' | '二等奖' | '三等奖' | '四等奖';
+export type CustomerType = '荒村' | '遗迹' | '城市';
+export type PrizeTier = '大房子' | '小房子' | '山洞' | '草坪';
 
 export interface DrawRecord {
   id: string;
   roundNumber: number;
   resultNumber: number;
+  prizeName: string;
   customerType: CustomerType;
   prizeTier: PrizeTier;
   timestamp: string;
@@ -219,6 +245,7 @@ export default function App() {
 
     const probabilities = PROBABILITY_TABLE[prizeTier][customerType];
     const pickedNumber = weightedRandomPick(probabilities);
+    const prizeName = PRIZE_NAMES[pickedNumber] || `数字${pickedNumber}`;
 
     setIsSpinning(true);
     setLastDrawnNumber(null);
@@ -246,7 +273,6 @@ export default function App() {
         soundManager.playTick();
         tickCount++;
         if (tickCount < totalTicks) {
-          // 随时间推移间隔变长，模拟转盘减速
           const delay = 45 + Math.pow(tickCount / totalTicks, 2) * 220;
           tickIntervalRef.current = setTimeout(tick, delay);
         }
@@ -269,7 +295,7 @@ export default function App() {
 
       setTimeout(() => setIsNeedleWobbling(false), 800);
 
-      // 追加记录
+      // 追加记录 (带奖品文案)
       const now = new Date();
       const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
       setDrawHistory(prev => [
@@ -278,6 +304,7 @@ export default function App() {
           id: `${Date.now()}-${prev.length + 1}`,
           roundNumber: prev.length + 1,
           resultNumber: pickedNumber,
+          prizeName,
           customerType,
           prizeTier,
           timestamp: timeStr
@@ -286,7 +313,7 @@ export default function App() {
     }, animationDuration);
   };
 
-  // 3. 重新抽奖 (立即清空记录，转盘归位，保留客户类型和奖级)
+  // 3. 重新抽奖 (立即清空记录，转盘归位，保留客户类型和奖级选择)
   const handleResetClick = () => {
     if (isSpinning) return;
     if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
@@ -311,7 +338,8 @@ export default function App() {
     setLastDrawnNumber(null);
   };
 
-  // 统计结果数据处理：按数字从小到大排序展示，格式：1中5次、5中2次（只展示出现过的数字）
+  // 统计结果数据处理：按数字从小到大排序展示
+  // 格式类似：菊花中5次、煤块中2次、芯片中1次（只展示实际出现过的奖品）
   const statistics = useMemo(() => {
     if (drawHistory.length === 0) return [];
     const countMap: Record<number, number> = {};
@@ -320,11 +348,15 @@ export default function App() {
     });
 
     const items = Object.entries(countMap)
-      .map(([numStr, count]) => ({
-        number: parseInt(numStr, 10),
-        count,
-        percent: Math.round((count / drawHistory.length) * 100)
-      }))
+      .map(([numStr, count]) => {
+        const num = parseInt(numStr, 10);
+        return {
+          number: num,
+          prizeName: PRIZE_NAMES[num] || `数字${num}`,
+          count,
+          percent: Math.round((count / drawHistory.length) * 100)
+        };
+      })
       .sort((a, b) => a.number - b.number);
 
     return items;
@@ -336,14 +368,14 @@ export default function App() {
       <header className="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-md sticky top-0 z-20 px-4 py-3 sm:px-6">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-rose-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 via-amber-500 to-rose-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
               <Sparkles className="w-5 h-5 text-slate-950" />
             </div>
             <div>
               <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                Spin the Wheel <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">数字转盘</span>
+                Spin the Wheel <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">幸运转盘</span>
               </h1>
-              <p className="text-xs text-slate-400 hidden sm:block">多客户类型与奖级独立概率轮盘系统</p>
+              <p className="text-xs text-slate-400 hidden sm:block">荒村 · 遗迹 · 城市场景独立概率轮盘系统</p>
             </div>
           </div>
 
@@ -375,67 +407,77 @@ export default function App() {
       {/* 主体工作区 */}
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6">
         
-        {/* 控制区容器：客户类型选择与奖级选择 */}
+        {/* 控制区容器：荒村/遗迹/城市选择 与 大房子/小房子/山洞/草坪选择 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           
-          {/* 一、客户类型选择区 */}
+          {/* 一、场景类型选择区 (荒村 / 遗迹 / 城市) */}
           <section id="customer-type-section" className="bg-slate-950/60 border border-slate-800/90 rounded-2xl p-4 sm:p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2">
-                <Users className="w-4 h-4 text-amber-400" />
-                <h2 className="text-sm font-semibold tracking-wide text-slate-200">1. 客户类型选择</h2>
+                <MapPin className="w-4 h-4 text-amber-400" />
+                <h2 className="text-sm font-semibold tracking-wide text-slate-200">1. 场景类型选择</h2>
               </div>
               <span className="text-xs text-amber-400/80 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">单选</span>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              {(['普通客户', 'VIP', '自己人'] as CustomerType[]).map((type) => {
-                const isSelected = customerType === type;
+              {([
+                { key: '荒村', icon: Mountain, desc: '原普通客户' },
+                { key: '遗迹', icon: Gem, desc: '原VIP' },
+                { key: '城市', icon: Building2, desc: '原自己人' }
+              ] as const).map(({ key, icon: IconComponent, desc }) => {
+                const isSelected = customerType === key;
                 return (
                   <button
-                    key={type}
-                    id={`customer-type-${type}`}
+                    key={key}
+                    id={`customer-type-${key}`}
                     disabled={isSpinning}
-                    onClick={() => setCustomerType(type)}
-                    className={`py-3 px-2 rounded-xl text-xs sm:text-sm font-medium transition-all flex flex-col items-center justify-center gap-1 border ${
+                    onClick={() => setCustomerType(key)}
+                    className={`py-3 px-2 rounded-xl text-xs sm:text-sm font-medium transition-all flex flex-col items-center justify-center gap-1.5 border ${
                       isSelected
                         ? 'bg-gradient-to-b from-amber-500/20 to-amber-600/10 border-amber-500/60 text-amber-300 shadow-md shadow-amber-500/10'
                         : 'bg-slate-900/80 hover:bg-slate-850 border-slate-800 text-slate-400 hover:text-slate-200'
-                    } ${isSpinning ? 'opacity-50 cursor-not-allowed' : 'active:scale-98'}`}
+                    } ${isSpinning ? 'opacity-50 cursor-not-allowed' : 'active:scale-98 cursor-pointer'}`}
                   >
-                    <span className="font-semibold">{type}</span>
-                    <span className="text-[10px] text-slate-500">{isSelected ? '✓ 已选中' : '点击选择'}</span>
+                    <IconComponent className={`w-4 h-4 ${isSelected ? 'text-amber-400' : 'text-slate-500'}`} />
+                    <span className="font-semibold text-sm">{key}</span>
+                    <span className="text-[10px] text-slate-500">{isSelected ? '✓ 已选中' : desc}</span>
                   </button>
                 );
               })}
             </div>
           </section>
 
-          {/* 二、奖级选择区 */}
+          {/* 二、奖级选择区 (大房子 / 小房子 / 山洞 / 草坪) */}
           <section id="prize-tier-section" className="bg-slate-950/60 border border-slate-800/90 rounded-2xl p-4 sm:p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2">
-                <Award className="w-4 h-4 text-rose-400" />
+                <Home className="w-4 h-4 text-rose-400" />
                 <h2 className="text-sm font-semibold tracking-wide text-slate-200">2. 奖级选择</h2>
               </div>
               <span className="text-xs text-rose-400/80 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">单选</span>
             </div>
             <div className="grid grid-cols-4 gap-2">
-              {(['一等奖', '二等奖', '三等奖', '四等奖'] as PrizeTier[]).map((tier) => {
-                const isSelected = prizeTier === tier;
+              {([
+                { key: '大房子', desc: '原一等奖' },
+                { key: '小房子', desc: '原二等奖' },
+                { key: '山洞', desc: '原三等奖' },
+                { key: '草坪', desc: '原四等奖' }
+              ] as const).map(({ key, desc }) => {
+                const isSelected = prizeTier === key;
                 return (
                   <button
-                    key={tier}
-                    id={`prize-tier-${tier}`}
+                    key={key}
+                    id={`prize-tier-${key}`}
                     disabled={isSpinning}
-                    onClick={() => setPrizeTier(tier)}
-                    className={`py-3 px-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all flex flex-col items-center justify-center gap-1 border ${
+                    onClick={() => setPrizeTier(key)}
+                    className={`py-3 px-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all flex flex-col items-center justify-center gap-1.5 border ${
                       isSelected
                         ? 'bg-gradient-to-b from-rose-500/20 to-rose-600/10 border-rose-500/60 text-rose-300 shadow-md shadow-rose-500/10'
                         : 'bg-slate-900/80 hover:bg-slate-850 border-slate-800 text-slate-400 hover:text-slate-200'
-                    } ${isSpinning ? 'opacity-50 cursor-not-allowed' : 'active:scale-98'}`}
+                    } ${isSpinning ? 'opacity-50 cursor-not-allowed' : 'active:scale-98 cursor-pointer'}`}
                   >
-                    <span className="font-semibold">{tier}</span>
-                    <span className="text-[10px] text-slate-500">{isSelected ? '✓ 已选中' : '选择'}</span>
+                    <span className="font-semibold text-sm">{key}</span>
+                    <span className="text-[10px] text-slate-500">{isSelected ? '✓ 已选' : desc}</span>
                   </button>
                 );
               })}
@@ -443,27 +485,31 @@ export default function App() {
           </section>
         </div>
 
-        {/* 展开的概率预览抽屉 (可选但便于验证) */}
+        {/* 展开的概率预览抽屉 */}
         {showProbabilityPreview && (
           <div className="bg-slate-950/80 border border-amber-500/30 rounded-2xl p-4 transition-all">
             <div className="flex items-center justify-between mb-2">
               <div className="text-xs font-semibold text-amber-300 flex items-center gap-2">
                 <Info className="w-3.5 h-3.5" />
-                当前配置概率表：{customerType || '未选客户'} + {prizeTier || '未选奖级'}
+                当前配置概率表：{customerType || '未选场景'} + {prizeTier || '未选奖级'}
               </div>
-              <span className="text-[11px] text-slate-400">各数字中奖几率 (1~10)</span>
+              <span className="text-[11px] text-slate-400">各奖品命中概率 (菊花~芯片)</span>
             </div>
             {currentProbabilities ? (
-              <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5 text-center">
-                {currentProbabilities.map((pct, idx) => (
-                  <div key={idx} className="bg-slate-900/90 border border-slate-800 rounded-lg p-1.5">
-                    <div className="text-xs font-bold text-amber-400">#{idx + 1}</div>
-                    <div className="text-xs font-mono text-slate-300">{pct}%</div>
-                  </div>
-                ))}
+              <div className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-2 text-center">
+                {currentProbabilities.map((pct, idx) => {
+                  const num = idx + 1;
+                  const name = PRIZE_NAMES[num];
+                  return (
+                    <div key={idx} className="bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex flex-col items-center">
+                      <div className="text-xs font-bold text-amber-400">{name}</div>
+                      <div className="text-xs font-mono font-bold text-slate-200 mt-1">{pct}%</div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
-              <p className="text-xs text-slate-500 italic">请先选择客户类型和奖级以查看对应的具体概率分布。</p>
+              <p className="text-xs text-slate-500 italic">请先选择场景类型和奖级以查看对应的具体概率分布。</p>
             )}
           </div>
         )}
@@ -488,9 +534,9 @@ export default function App() {
                 </span>
               </div>
               {lastDrawnNumber !== null && !isSpinning && (
-                <div className="flex items-center gap-1 text-amber-400 font-bold bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/30 animate-fade-in">
+                <div className="flex items-center gap-1.5 text-amber-400 font-bold bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/30 animate-fade-in">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>最新抽中：数字 {lastDrawnNumber}</span>
+                  <span>恭喜抽中：{PRIZE_NAMES[lastDrawnNumber]}</span>
                 </div>
               )}
             </div>
@@ -512,7 +558,6 @@ export default function App() {
                 <div className="flex flex-col items-center">
                   {/* 指针主体带发光质感 */}
                   <div className="w-7 h-10 relative filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
-                    {/* SVG 精致指针 */}
                     <svg viewBox="0 0 28 40" className="w-full h-full">
                       <defs>
                         <linearGradient id="pointerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -581,20 +626,22 @@ export default function App() {
 
                     {/* 扇区中奖高亮金光 */}
                     <radialGradient id="gradHighlight" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stopColor="#FEF08A" stopOpacity="0.8" />
-                      <stop offset="100%" stopColor="#CA8A04" stopOpacity="0.1" />
+                      <stop offset="0%" stopColor="#FEF08A" stopOpacity="0.85" />
+                      <stop offset="100%" stopColor="#CA8A04" stopOpacity="0.15" />
                     </radialGradient>
                   </defs>
 
-                  {/* 10 个扇区路径绘制 (数字 1~10 顺时针排列) */}
+                  {/* 10 个扇区路径绘制 (菊花~芯片 顺时针排列) */}
                   {Array.from({ length: TOTAL_SECTORS }).map((_, idx) => {
                     const sectorNumber = idx + 1;
+                    const prizeName = PRIZE_NAMES[sectorNumber];
                     const isEven = sectorNumber % 2 === 0;
                     const isWinner = !isSpinning && lastDrawnNumber === sectorNumber;
 
                     // 计算该扇区的文本标签位置与旋转角度
                     const midAngle = (sectorNumber - 1) * SECTOR_ANGLE;
-                    const textPos = polarToCartesian(WHEEL_CENTER, WHEEL_CENTER, 125, midAngle);
+                    const textPos = polarToCartesian(WHEEL_CENTER, WHEEL_CENTER, 122, midAngle);
+                    const isLongName = prizeName.length >= 4;
 
                     return (
                       <g key={sectorNumber} id={`wheel-sector-${sectorNumber}`}>
@@ -616,22 +663,22 @@ export default function App() {
                           />
                         )}
 
-                        {/* 扇区数字标签 (顺时针旋转对齐，面向外圈) */}
+                        {/* 扇区奖品名称标签 */}
                         <text
                           x={textPos.x}
                           y={textPos.y}
                           fill="#FFFFFF"
-                          fontSize="24"
+                          fontSize={isLongName ? "12.5" : "14"}
                           fontWeight="800"
                           fontFamily="system-ui, -apple-system, sans-serif"
                           textAnchor="middle"
                           dominantBaseline="central"
                           transform={`rotate(${midAngle}, ${textPos.x}, ${textPos.y})`}
                           style={{
-                            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))'
+                            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.7))'
                           }}
                         >
-                          {sectorNumber}
+                          {prizeName}
                         </text>
                       </g>
                     );
@@ -673,11 +720,11 @@ export default function App() {
             {!canSpin && !isSpinning && (
               <div className="text-xs text-amber-400/90 flex items-center gap-1.5 mt-2 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/20">
                 <Info className="w-3.5 h-3.5" />
-                <span>请先在上方选择「客户类型」和「奖级」，方可启动抽奖</span>
+                <span>请先在上方选择「场景」和「奖级」，方可启动抽奖</span>
               </div>
             )}
 
-            {/* 四、操作按钮区 (严格按照要求：抽奖、重新抽奖、结束抽奖) */}
+            {/* 四、操作按钮区 (抽奖、重新抽奖、结束抽奖) */}
             <div className="w-full max-w-md grid grid-cols-3 gap-3 mt-6">
               {/* 抽奖按钮 */}
               <button
@@ -702,7 +749,7 @@ export default function App() {
                 className={`py-3.5 px-3 rounded-xl font-semibold text-sm transition-all border flex items-center justify-center gap-1.5 ${
                   isSpinning
                     ? 'bg-slate-900 border-slate-800 text-slate-600 cursor-not-allowed'
-                    : 'bg-slate-900/90 hover:bg-slate-800 border-slate-700 text-slate-200 active:scale-97 hover:border-slate-600 cursor-pointer'
+                    : 'bg-slate-900/90 hover:bg-slate-850 border-slate-700 text-slate-200 active:scale-97 hover:border-slate-600 cursor-pointer'
                 }`}
               >
                 <RotateCcw className="w-4 h-4 text-slate-400" />
@@ -742,7 +789,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* 记录列表 (随着抽奖次数向下追加) */}
+            {/* 记录列表 (随着抽奖次数向下追加，展示奖品文案) */}
             <div className="flex-1 overflow-y-auto py-3 space-y-2 pr-1 custom-scrollbar">
               {drawHistory.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center p-8 text-slate-500">
@@ -751,7 +798,7 @@ export default function App() {
                   </div>
                   <p className="text-sm font-medium text-slate-400">暂无抽奖记录</p>
                   <p className="text-xs text-slate-600 mt-1 max-w-[200px]">
-                    选择客户类型与奖级后，点击「抽奖」开始游戏
+                    选择场景与奖级后，点击「抽奖」开始游戏
                   </p>
                 </div>
               ) : (
@@ -767,7 +814,7 @@ export default function App() {
                       </div>
                       <div>
                         <div className="text-sm font-semibold text-slate-200">
-                          第 {item.roundNumber} 次：抽中数字 <span className="text-amber-400 font-bold">{item.resultNumber}</span>
+                          第 {item.roundNumber} 次：抽中 <span className="text-amber-400 font-bold">{item.prizeName}</span>
                         </div>
                         <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
                           <span>{item.customerType}</span>
@@ -782,8 +829,8 @@ export default function App() {
                         <Clock className="w-3 h-3" />
                         {item.timestamp}
                       </span>
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center font-bold text-xs text-slate-950 shadow-sm">
-                        {item.resultNumber}
+                      <div className="px-2.5 py-1 rounded-full bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center font-bold text-xs text-slate-950 shadow-sm">
+                        {item.prizeName}
                       </div>
                     </div>
                   </div>
@@ -795,10 +842,10 @@ export default function App() {
             {/* 底部摘要小贴士 */}
             {drawHistory.length > 0 && (
               <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-                <span>最新：第 {drawHistory.length} 次抽中 {drawHistory[drawHistory.length - 1].resultNumber}</span>
+                <span>最新：第 {drawHistory.length} 次抽中 {drawHistory[drawHistory.length - 1].prizeName}</span>
                 <button
                   onClick={handleEndDrawClick}
-                  className="text-amber-400 hover:text-amber-300 font-medium underline underline-offset-2"
+                  className="text-amber-400 hover:text-amber-300 font-medium underline underline-offset-2 cursor-pointer"
                 >
                   查看统计详情
                 </button>
@@ -813,7 +860,7 @@ export default function App() {
 
       {/* 底部页脚 */}
       <footer className="border-t border-slate-800/60 py-4 px-6 text-center text-xs text-slate-500">
-        <span>Spin the Wheel · 数字转盘抽奖系统 · 严格遵循概率配置</span>
+        <span>Spin the Wheel · 幸运转盘抽奖系统 · 严格遵循概率配置</span>
       </footer>
 
       {/* 六、结果统计弹窗 (Modal) */}
@@ -834,13 +881,13 @@ export default function App() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white">本轮抽奖结果统计</h3>
-                  <p className="text-xs text-slate-400">按数字从小到大排序展示</p>
+                  <p className="text-xs text-slate-400">按奖品序号从小到大排序展示</p>
                 </div>
               </div>
               <button
                 id="btn-modal-close-icon"
                 onClick={handleModalCloseClick}
-                className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+                className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -861,16 +908,16 @@ export default function App() {
                 </div>
               ) : (
                 <>
-                  {/* 格式化统计文本行展示 */}
+                  {/* 格式化统计文本行展示：菊花中5次、煤块中2次、芯片中1次 */}
                   <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
-                    <div className="text-xs font-semibold text-amber-400 mb-2">中奖摘要（仅展示出现过的数字）：</div>
+                    <div className="text-xs font-semibold text-amber-400 mb-2">中奖摘要（仅展示出现过的奖品）：</div>
                     <div className="flex flex-wrap gap-2 text-sm text-slate-200">
                       {statistics.map((item, idx) => (
                         <span
                           key={item.number}
                           className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700/70 text-slate-200 font-mono text-xs"
                         >
-                          <strong className="text-amber-400 mr-1">{item.number}</strong>
+                          <strong className="text-amber-400 mr-1">{item.prizeName}</strong>
                           中 {item.count} 次
                           {idx < statistics.length - 1 && <span className="text-slate-600 ml-2">、</span>}
                         </span>
@@ -881,19 +928,19 @@ export default function App() {
                   {/* 详细条形柱状图可视化 */}
                   <div className="space-y-2.5 pt-1">
                     <div className="text-xs font-semibold text-slate-400 px-1">
-                      各数字出现频次分布（共 {drawHistory.length} 次）：
+                      各奖品出现频次分布（共 {drawHistory.length} 次）：
                     </div>
                     {statistics.map(item => (
                       <div
                         key={item.number}
                         className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-2.5 flex items-center gap-3"
                       >
-                        <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-sm border border-amber-500/30">
-                          {item.number}
+                        <div className="w-20 px-2 py-1.5 rounded-lg bg-amber-500/10 text-amber-300 font-bold flex items-center justify-center text-xs border border-amber-500/20 truncate">
+                          {item.prizeName}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between text-xs mb-1">
-                            <span className="text-slate-200 font-medium">数字 {item.number}：中奖 {item.count} 次</span>
+                            <span className="text-slate-200 font-medium">{item.prizeName}：中奖 {item.count} 次</span>
                             <span className="text-slate-400 font-mono">{item.percent}%</span>
                           </div>
                           <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">

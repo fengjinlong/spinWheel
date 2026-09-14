@@ -1,6 +1,6 @@
 {
   "name": "Spin the Wheel - 数字转盘抽奖",
-  "description": "数字转盘抽奖应用，支持多客户类型与奖级独立概率抽奖、平滑旋转动画与抽奖结果统计。",
+  "description": "幸运转盘抽奖应用，支持荒村/遗迹/城市与大房子/小房子/山洞/草坪独立概率抽奖，菊花至芯片等物品抽奖与结果统计。",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
