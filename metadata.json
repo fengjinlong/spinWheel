@@ -1,0 +1,6 @@
+{
+  "name": "Spin the Wheel - 数字转盘抽奖",
+  "description": "数字转盘抽奖应用，支持多客户类型与奖级独立概率抽奖、平滑旋转动画与抽奖结果统计。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
