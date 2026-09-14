@@ -462,9 +462,9 @@ export default function App() {
             </div>
             <div className="grid grid-cols-3 gap-2">
               {([
-                { key: '荒村', icon: Mountain, desc: '原普通客户' },
-                { key: '遗迹', icon: Gem, desc: '原VIP' },
-                { key: '城市', icon: Building2, desc: '原自己人' }
+                { key: '荒村', icon: Mountain, desc: '' },
+                { key: '遗迹', icon: Gem, desc: '' },
+                { key: '城市', icon: Building2, desc: '' }
               ] as const).map(({ key, icon: IconComponent, desc }) => {
                 const isSelected = customerType === key;
                 return (
@@ -499,10 +499,10 @@ export default function App() {
             </div>
             <div className="grid grid-cols-4 gap-2">
               {([
-                { key: '大房子', desc: '原一等奖' },
-                { key: '小房子', desc: '原二等奖' },
-                { key: '山洞', desc: '原三等奖' },
-                { key: '草坪', desc: '原四等奖' }
+                { key: '大房子', desc: '' },
+                { key: '小房子', desc: '' },
+                { key: '山洞', desc: '' },
+                { key: '草坪', desc: '' }
               ] as const).map(({ key, desc }) => {
                 const isSelected = prizeTier === key;
                 return (
